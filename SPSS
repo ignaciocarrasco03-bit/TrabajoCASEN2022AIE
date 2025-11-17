@@ -198,3 +198,396 @@ T-TEST
 ===================================
 Pregunta 4: ¿Cómo varía el acceso a servicios básicos (salud, educación, internet) según quintil de ingreso y zona de residencia, y qué diferencias existen entre grupos vulnerables (personas migrantes, indígenas, adultos mayores)?
 ===================================
+DATASET ACTIVATE ConjuntoDatos1.
+
+RECODE hh_d_prevs (0=1) (1=0).
+EXECUTE.
+
+RECODE hh_d_esc (0=1) (1=0).
+EXECUTE.
+
+COMPUTE acceso_salud=hh_d_prevs.
+EXECUTE.
+
+COMPUTE acceso_educ=hh_d_esc.
+EXECUTE.
+
+COMPUTE acceso_internet=(r17a = 1) OR ( r17b = 1) OR (r17c = 1) OR (r17d = 1) OR (r17e = 1).
+EXECUTE.
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=qaut MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: qaut=col(source(s), name("qaut"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("Quintil autónomo nacional"))
+  GUIDE: axis(dim(2), label("Media"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label(""))
+  GUIDE: text.title(label("Barras agrupadas Media de acceso_salud, Media de acceso_educ, Media ",
+    "de acceso_internet..."))
+  SCALE: cat(dim(3), include("1", "2", "3", "4", "5"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*qaut), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=area MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: area=col(source(s), name("area"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("Área"))
+  GUIDE: axis(dim(2), label("Media"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label(""))
+  GUIDE: text.title(label("Barras agrupadas Media de acceso_salud, Media de acceso_educ, Media ",
+    "de acceso_internet..."))
+  SCALE: cat(dim(3), include("1", "2"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*area), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+FREQUENCIES VARIABLES=acceso_salud acceso_educ acceso_internet
+  /STATISTICS=STDDEV MEAN
+  /ORDER=ANALYSIS.
+
+CROSSTABS
+  /TABLES=area BY qaut
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT ROW 
+  /COUNT ROUND CELL.
+
+OLAP CUBES acceso_salud acceso_educ acceso_internet BY area
+  /CELLS=COUNT MEAN MEDIAN STDDEV MIN MAX SKEW KURT
+  /TITLE='Cubos OLAP'.
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=qaut MEAN(s13)[name="MEAN_s13"] area MISSING=LISTWISE 
+    REPORTMISSING=NO
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: qaut=col(source(s), name("qaut"), unit.category())
+  DATA: MEAN_s13=col(source(s), name("MEAN_s13"))
+  DATA: area=col(source(s), name("area"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("Quintil autónomo nacional"))
+  GUIDE: axis(dim(2), label("Media s13. ¿A qué sistema previsional de salud pertenece?"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label("Área"))
+  GUIDE: text.title(label("Barras agrupadas Media de s13. ¿A qué sistema previsional de salud ",
+    "pertenece? por Quintil autónomo nacional por Área"))
+  SCALE: cat(dim(3), include("1", "2", "3", "4", "5"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("1", "2"))
+  SCALE: cat(dim(1), include("1", "2"))
+  ELEMENT: interval(position(area*MEAN_s13*qaut), color.interior(area), 
+    shape.interior(shape.square))
+END GPL.
+
+
+
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=qaut esc area MISSING=LISTWISE REPORTMISSING=NO
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: qaut=col(source(s), name("qaut"), unit.category())
+  DATA: esc=col(source(s), name("esc"))
+  DATA: area=col(source(s), name("area"), unit.category())
+  DATA: id=col(source(s), name("$CASENUM"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("Quintil autónomo nacional"))
+  GUIDE: axis(dim(2), label("Años de escolaridad (edad >= 15)"))
+  GUIDE: legend(aesthetic(aesthetic.color), label("Área"))
+  GUIDE: text.title(label("Diagrama de cajas Agrupado de Años de escolaridad (edad >= 15) por ",
+    "Quintil autónomo nacional por Área"))
+  SCALE: cat(dim(3), include("1", "2", "3", "4", "5"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color), include("1", "2"))
+  SCALE: cat(dim(1), include("1", "2"))
+  ELEMENT: schema(position(bin.quantile.letter(area*esc*qaut)), color(area), label(id))
+END GPL.
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=nse MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: nse=col(source(s), name("nse"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("Nivel Socioeconómico de la UPM"))
+  GUIDE: axis(dim(2), label("Media"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label("Área"))
+  GUIDE: text.title(label("Barras agrupadas Media de acceso_salud, Media de acceso_educ, Media ",
+    "de acceso_internet..."))
+  SCALE: cat(dim(3), include("1", "2", "3", "4", "5", "6", "7"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*nse), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=s13 COUNT()[name="COUNT"] qaut MISSING=LISTWISE 
+    REPORTMISSING=NO
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: s13=col(source(s), name("s13"), unit.category())
+  DATA: COUNT=col(source(s), name("COUNT"))
+  DATA: qaut=col(source(s), name("qaut"), unit.category())
+  GUIDE: axis(dim(1), label("s13. ¿A qué sistema previsional de salud pertenece?"))
+  GUIDE: axis(dim(2), label("Recuento"))
+  GUIDE: axis(dim(3), label("Quintil autónomo nacional"), opposite())
+  GUIDE: text.title(label("Barras simples Recuento de s13. ¿A qué sistema previsional de salud ",
+    "pertenece? por Quintil autónomo nacional"))
+  SCALE: cat(dim(1), include("1", "2", "3", "4", "5"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(dim(3), include("1", "2", "3", "4", "5"))
+  ELEMENT: interval(position(s13*COUNT*qaut), shape.interior(shape.square))
+END GPL.
+
+
+COMPUTE acceso_total=acceso_salud + acceso_educ + acceso_internet.
+EXECUTE.
+
+RECODE acceso_total (0=0) (1=1) (2=2) (3=3) INTO acceso_ordinal.
+VARIABLE LABELS  acceso_ordinal 'Nivel ordinal de acceso'.
+EXECUTE.
+
+RECODE r1a (1=0) (2=1) (3=1) INTO migrante.
+EXECUTE.
+
+RECODE r3 (11=0) (1 thru 10=1) INTO indigena.
+EXECUTE.
+
+COMPUTE adulto_mayor = 0.
+IF (edad >= 60) adulto_mayor = 1.
+EXECUTE.
+
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=migrante MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: migrante=col(source(s), name("migrante"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("migrante"))
+  GUIDE: axis(dim(2), label("acceso_salud"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label(""))
+  GUIDE: text.title(label("Barras agrupadas de acceso_salud, Media de acceso_educ, Media de ",
+    "acceso_internet..."))
+  SCALE: cat(dim(3), include("0.00", "1.00"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*migrante), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=indigena MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: indigena=col(source(s), name("indigena"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("indigena"))
+  GUIDE: axis(dim(2), label("acceso_salud"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label(""))
+  GUIDE: text.title(label("Barras agrupadas de acceso_salud, Media de acceso_educ, Media de ",
+    "acceso_internet..."))
+  SCALE: cat(dim(3), include("0.00", "1.00"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*indigena), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+* Generador de gráficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=adulto_mayor MEAN(acceso_salud) MEAN(acceso_educ) 
+    MEAN(acceso_internet) MISSING=LISTWISE REPORTMISSING=NO
+    TRANSFORM=VARSTOCASES(SUMMARY="#SUMMARY" INDEX="#INDEX")
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: adulto_mayor=col(source(s), name("adulto_mayor"), unit.category())
+  DATA: SUMMARY=col(source(s), name("#SUMMARY"))
+  DATA: INDEX=col(source(s), name("#INDEX"), unit.category())
+  COORD: rect(dim(1,2), cluster(3,0))
+  GUIDE: axis(dim(3), label("adulto_mayor"))
+  GUIDE: axis(dim(2), label("acceso_salud"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label(""))
+  GUIDE: text.title(label("Barras agrupadas de acceso_salud, Media de acceso_educ, Media de ",
+    "acceso_internet..."))
+  SCALE: cat(dim(3), include("0.00", "1.00"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include("0", "1", "2"))
+  SCALE: cat(dim(1), include("0", "1", "2"))
+  ELEMENT: interval(position(INDEX*SUMMARY*adulto_mayor), color.interior(INDEX), 
+    shape.interior(shape.square))
+END GPL.
+
+CROSSTABS
+  /TABLES=acceso_ordinal BY qaut
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT COLUMN 
+  /COUNT ROUND CELL.
+
+CROSSTABS
+  /TABLES=acceso_ordinal BY migrante
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT COLUMN 
+  /COUNT ROUND CELL.
+
+CROSSTABS
+  /TABLES=acceso_ordinal BY migrante indigena adulto_mayor
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT COLUMN 
+  /COUNT ROUND CELL.
+
+CROSSTABS
+  /TABLES=acceso_ordinal BY area
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT COLUMN 
+  /COUNT ROUND CELL.
+
+
+COMPUTE indice_acceso=acceso_total / 3.
+EXECUTE.
+
+FREQUENCIES VARIABLES=indice_acceso
+  /STATISTICS=STDDEV MINIMUM MAXIMUM MEAN MEDIAN
+  /ORDER=ANALYSIS.
+
+
+USE ALL.
+COMPUTE filter_$=(edad >= 60).
+VARIABLE LABELS filter_$ 'edad >= 60 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+
+FREQUENCIES VARIABLES=indice_acceso
+  /STATISTICS=STDDEV MINIMUM MAXIMUM MEAN MEDIAN
+  /BARCHART PERCENT
+  /ORDER=ANALYSIS.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+USE ALL.
+COMPUTE filter_$=(migrante = 1).
+VARIABLE LABELS filter_$ 'migrante = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+FREQUENCIES VARIABLES=indice_acceso
+  /STATISTICS=STDDEV MINIMUM MAXIMUM MEAN MEDIAN
+  /BARCHART PERCENT
+  /ORDER=ANALYSIS.
+
+FILTER OFF.
+USE ALL.
+EXECUTE.
+
+USE ALL.
+COMPUTE filter_$=(indigena = 1).
+VARIABLE LABELS filter_$ 'indigena = 1 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+FREQUENCIES VARIABLES=indice_acceso
+  /STATISTICS=STDDEV MINIMUM MAXIMUM MEAN MEDIAN
+  /BARCHART PERCENT
+  /ORDER=ANALYSIS.
+
+AGGREGATE
+  /OUTFILE='C:\Users\CelisJR9\Desktop\analisis electivo\agregado_adulto_mayor.sav'
+  /BREAK=adulto_mayor
+  /indice_acceso_mean_1=MEAN(indice_acceso) 
+  /indice_acceso_sd=SD(indice_acceso) 
+  /indice_acceso_n=N(indice_acceso).
+
+AGGREGATE
+  /OUTFILE='C:\Users\CelisJR9\Desktop\analisis electivo\agregado_migrante.sav'
+  /BREAK=migrante
+  /indice_acceso_mean_1=MEAN(indice_acceso) 
+  /indice_acceso_sd=SD(indice_acceso) 
+  /indice_acceso_n=N(indice_acceso).
+
+AGGREGATE
+  /OUTFILE='C:\Users\CelisJR9\Desktop\analisis electivo\agregado_indigena.sav'
+  /BREAK=indigena
+  /indice_acceso_mean_1=MEAN(indice_acceso) 
+  /indice_acceso_sd=SD(indice_acceso) 
+  /indice_acceso_n=N(indice_acceso).
+
+
+
+T-TEST GROUPS=adulto_mayor(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=indice_acceso
+  /CRITERIA=CI(.95).
+
+T-TEST GROUPS=migrante(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=indice_acceso
+  /CRITERIA=CI(.95).
+
+T-TEST GROUPS=indigena(0 1)
+  /MISSING=ANALYSIS
+  /VARIABLES=indice_acceso
+  /CRITERIA=CI(.95).
+
+
