@@ -1,7 +1,106 @@
 ==================================
 Pregunta 1 ¿Cuáles son los factores sociodemográficos y territoriales que inciden con mayor peso estadístico en la desigualdad del ingreso familiar en Chile según Casen 2022?
 ==================================
+* ========================================================================
+* ANÁLISIS FACTORES QUE INFLUYEN EN INGRESO HOGARES - CASEN 2022
+* ========================================================================
 
+* -----------------------------------------------------------------------
+* 1. ACTIVAR PONDERADOR
+* -----------------------------------------------------------------------
+WEIGHT BY expr.
+EXECUTE.
+
+* -----------------------------------------------------------------------
+* 2. RECODIFICACIÓN DE VARIABLES CATEGÓRICAS EN DUMMIES
+* -----------------------------------------------------------------------
+
+* Sexo del jefe de hogar.
+RECODE sexo (2=1) (1=0) INTO mujer_jh.
+VARIABLE LABELS mujer_jh 'Jefe de hogar mujer (1=Mujer, 0=Hombre)'.
+VALUE LABELS mujer_jh 0 'Hombre' 1 'Mujer'.
+EXECUTE.
+
+* Zona urbana/rural.
+RECODE area (2=1) (1=0) INTO zona_rural.
+VARIABLE LABELS zona_rural 'Zona rural (1=Rural, 0=Urbana)'.
+VALUE LABELS zona_rural 0 'Urbana' 1 'Rural'.
+EXECUTE.
+
+* Pertenencia a pueblos indígenas (r3 en lugar de pueblo).
+RECODE r3 (1 THRU 10=1) (11=0) INTO pertenece_pi.
+VARIABLE LABELS pertenece_pi 'Pertenece a pueblo indígena (1=Sí, 0=No)'.
+VALUE LABELS pertenece_pi 0 'No pertenece' 1 'Pertenece'.
+EXECUTE.
+
+* Condición migrante (r1a en lugar de nacionalidad).
+* Nota: r1a=1 es Chile, otros códigos son extranjeros.
+RECODE r1a (1=0) (ELSE=1) INTO es_migrante.
+VARIABLE LABELS es_migrante 'Es migrante (1=Extranjero, 0=Chileno)'.
+VALUE LABELS es_migrante 0 'Chileno' 1 'Extranjero'.
+EXECUTE.
+
+* Nivel educativo en dummies.
+RECODE e6a (1 THRU 7=1) (ELSE=0) INTO educ_basica.
+RECODE e6a (8 THRU 10=1) (ELSE=0) INTO educ_media.
+RECODE e6a (11 THRU 17=1) (ELSE=0) INTO educ_superior.
+VARIABLE LABELS 
+  educ_basica 'Educación básica o menos'
+  educ_media 'Educación media'
+  educ_superior 'Educación superior'.
+VALUE LABELS educ_basica educ_media educ_superior 0 'No' 1 'Sí'.
+EXECUTE.
+
+* -----------------------------------------------------------------------
+* 3. ANÁLISIS DESCRIPTIVO Y VISUALIZACIÓN
+* -----------------------------------------------------------------------
+
+* Histograma del ingreso original.
+GRAPH
+  /HISTOGRAM=ytotcor.
+
+* Crear variable logarítmica del ingreso.
+IF (ytotcor > 0) log_ytotcor = LG10(ytotcor).
+VARIABLE LABELS log_ytotcor 'Logaritmo base 10 del ingreso total'.
+EXECUTE.
+
+* Histograma del ingreso original con curva normal.
+FREQUENCIES VARIABLES=ytotcor
+  /FORMAT=NOTABLE
+  /HISTOGRAM NORMAL
+  /ORDER=ANALYSIS.
+
+* Histograma del ingreso transformado con curva normal.
+FREQUENCIES VARIABLES=log_ytotcor
+  /FORMAT=NOTABLE
+  /HISTOGRAM NORMAL
+  /ORDER=ANALYSIS.
+
+* Tablas de frecuencia de variables sociodemográficas.
+
+FREQUENCIES VARIABLES=sexo area r3 r1a e6a region
+  /ORDER=ANALYSIS
+  /STATISTICS=MEAN MEDIAN MODE STDDEV.
+
+
+* -----------------------------------------------------------------------
+* 4. CREACIÓN DEL ÍNDICE DE VULNERABILIDAD Y NORMALIZACIÓN
+* -----------------------------------------------------------------------
+
+* Crear índice de vulnerabilidad (suma de condiciones).
+COMPUTE indice_vuln = mujer_jh + pertenece_pi + es_migrante + educ_basica.
+VARIABLE LABELS indice_vuln 'Índice de vulnerabilidad del jefe de hogar (0-4)'.
+EXECUTE.
+
+* Normalizar a escala 0-1 usando fórmula Min-Max.
+COMPUTE indice_norm = indice_vuln / 4.
+VARIABLE LABELS indice_norm 'Índice de vulnerabilidad normalizado (0-1)'.
+EXECUTE.
+
+* Tabla descriptiva del índice.
+FREQUENCIES VARIABLES=indice_vuln indice_norm
+  /STATISTICS=MEAN STDDEV MIN MAX
+  /ORDER=ANALYSIS.
 
 
 
