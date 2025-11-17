@@ -1,0 +1,100 @@
+==================================
+Pregunta 3
+==================================
+
+RECODE numper (1 thru 2=1) (3=2) (4=3) (5=4) (6 thru hi=5) INTO tamano_cat.
+VALUE LABELS tamano_cat 
+1 '1-2 personas' 2 '3 personas' 3 '4 personas' 4 '5 personas' 5 '6 y m?s'.
+WEIGHT BY expr.
+
+COMPUTE ing_per_capita = ytotcor / numper.
+CROSSTABS
+  /TABLES=tamano_cat BY nse
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT ROW COLUMN TOTAL 
+  /COUNT ROUND CELL
+  /BARCHART.
+
+GRAPH
+  /HISTOGRAM=tamano_cat.
+
+
+
+* Generador de gr?ficos.
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=nse ing_per_capita MISSING=LISTWISE REPORTMISSING=NO
+  /GRAPHSPEC SOURCE=INLINE
+  /FITLINE TOTAL=NO SUBGROUP=NO.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: nse=col(source(s), name("nse"), unit.category())
+  DATA: ing_per_capita=col(source(s), name("ing_per_capita"))
+  DATA: nse1=col(source(s), name("nse"), unit.category())
+  GUIDE: axis(dim(1), label("Nivel Socioecon?mico de la UPM"))
+  GUIDE: axis(dim(2), label("ing_per_capita"))
+  GUIDE: legend(aesthetic(aesthetic.color.interior), label("Nivel Socioecon?mico de la UPM"))
+  GUIDE: text.title(label("Diagrama de dispersi?n de ing_per_capita por Nivel Socioecon?mico de ",
+    "la UPM por Nivel Socioecon?mico de la UPM"))
+  SCALE: cat(dim(1), include("1", "4", "6", "5", "2", "7", "3"), sort.values("1", "4", "6", "5", 
+    "2", "7", "3"))
+  SCALE: linear(dim(2), include(0))
+  SCALE: cat(aesthetic(aesthetic.color.interior), include(
+"1", "2", "3", "4", "5", "6", "7"))
+  ELEMENT: point(position(nse*ing_per_capita), color.interior(nse1))
+END GPL.
+
+FREQUENCIES VARIABLES=numper
+  /STATISTICS=MINIMUM MAXIMUM MEAN MEDIAN SKEWNESS SESKEW KURTOSIS SEKURT
+  /ORDER=ANALYSIS.
+
+CROSSTABS
+  /TABLES=tamano_cat BY nse
+  /FORMAT=AVALUE TABLES
+  /CELLS=COUNT ROW COLUMN TOTAL 
+  /COUNT ROUND CELL
+  /BARCHART.
+
+
+RECODE tamano_cat 
+  (1 2 = 1) 
+  (3 4 = 2) 
+  (5 THRU HI = 3)
+  INTO tamano3cat.
+
+VALUE LABELS tamano3cat
+  1 "Chico (1-2)"
+  2 "Mediano (3-4)"
+  3 "Grande (5+)".
+EXECUTE.
+
+MEANS TABLES = ing_per_capita BY tamano3cat
+  /CELLS = MEAN COUNT STDDEV MEDIAN.
+
+*Filtrar solo hogares grandes (5+ personas).
+USE ALL.
+SELECT IF (tamano3cat = 3).
+EXECUTE.
+
+*Agregaci?n por regi?n.
+AGGREGATE
+  /OUTFILE=* MODE=ADDVARIABLES
+  /BREAK=region
+  /mean_ing=MEAN(ing_per_capita).
+
+
+*Dummy: 1 = hacinamiento cr?tico, 0 = resto.
+RECODE ind_hacina 
+  (4 = 1) 
+  (1 2 3 = 0) 
+  INTO hacin_critico_dummy.
+
+VALUE LABELS hacin_critico_dummy
+  0 "No critico"
+  1 "Critico".
+EXECUTE.
+
+*T test: ingreso vs condici?n cr?tico/no cr?tico.
+T-TEST 
+  GROUPS = hacin_critico_dummy(0 1)
+  /VARIABLES = ing_per_capita
+  /CRITERIA = CI(.95).
