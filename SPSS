@@ -1,5 +1,99 @@
 ==================================
-Pregunta 3
+Pregunta 1 ¿Cuáles son los factores sociodemográficos y territoriales que inciden con mayor peso estadístico en la desigualdad del ingreso familiar en Chile según Casen 2022?
+==================================
+
+
+
+
+
+==================================
+Pregunta 2 ¿Qué factores sociodemográficos se asocian con la participación y tipo de ocupación de las mujeres en la fuerza laboral en Chile, según la Casen 2022?
+==================================
+COMPUTE fuerza_laboral_fem = (Sexo = 2) & (Edad >= 15 & Edad <= 62).
+COMPUTE fuerza_Laboral_Activa = (o1 = 1 | o2 = 1 | o3 = 1) & (Sexo = 2) & (Edad >= 15 & Edad <= 62).
+EXECUTE.
+
+
+COMPUTE grupo_fuerza_laboral = $SYSMIS.
+IF (fuerza_Laboral_Activa = 1) grupo_fuerza_laboral = 1.
+IF (fuerza_laboral_fem = 1 AND fuerza_Laboral_Activa = 0) grupo_fuerza_laboral = 2.
+EXECUTE.
+
+VALUE LABELS grupo_fuerza_laboral
+  1 'Fuerza laboral activa'
+  2 'Fuerza laboral no activa'.
+EXECUTE.
+
+
+FREQUENCIES VARIABLES=grupo_fuerza_laboral
+  /PIECHART FREQ
+  /FORMAT=NOTABLE
+  /ORDER=ANALYSIS.
+
+RECODE e6a
+   (1,2,3,4,5,6 = 1)    
+   (7,8,9,10,11 = 2)  
+   (12,13,14,15 = 3)    
+   INTO nivel_edu.
+VALUE LABELS nivel_edu
+   1 'Básica o menos'
+   2 'Media'
+   3 'Superior'.
+EXECUTE.
+
+
+SELECT IF (grupo_fuerza_laboral = 1 OR grupo_fuerza_laboral = 2).
+RANK VARIABLES=ypc (A)
+  /NTILES(5)
+  /PRINT=YES
+  /TIES=MEAN.
+EXECUTE.
+
+RECODE Edad
+  (15 THRU 24 = 1)
+  (25 THRU 34 = 2)
+  (35 THRU 44 = 3)
+  (45 THRU 54 = 4)
+  (55 THRU 62 = 5)
+  INTO edad_grupo.
+VALUE LABELS edad_grupo
+  1 '15-24 años'
+  2 '25-34 años'
+  3 '35-44 años'
+  4 '45-54 años'
+  5 '55-62 años'.
+EXECUTE.
+  GRAPH
+  /BAR(GROUPED)=COUNT BY edad_grupo BY grupo_fuerza_laboral
+  /TITLE='Distribución por Edad: Activas vs No Activas'.
+  GRAPH
+  /BAR(GROUPED)=COUNT BY nivel_edu BY grupo_fuerza_laboral
+  /TITLE='Nivel Educativo: Activas vs No Activas'.
+
+GGRAPH
+  /GRAPHDATASET NAME="graphdataset" VARIABLES=ypc MISSING=LISTWISE REPORTMISSING=NO
+  /GRAPHSPEC SOURCE=INLINE.
+BEGIN GPL
+  SOURCE: s=userSource(id("graphdataset"))
+  DATA: ypc=col(source(s), name("ypc"))
+  GUIDE: axis(dim(1), label("Ingreso total per cápita del hogar corregido"))
+  GUIDE: axis(dim(2), label("Frecuencia"))
+  GUIDE: text.title(label("Histograma Simple de Ingreso total per cápita del hogar corregido"))
+  SCALE: linear(dim(1), min(0), max(2500000))
+  ELEMENT: interval(position(summary.count(bin.rect(ypc))), shape.interior(shape.square))
+END GPL.
+
+
+CROSSTABS
+  /TABLES = s5 BY fuerza_Laboral_Activa
+  /FORMAT = AVALUE TABLES
+  /STATISTICS = CHI2
+  /CELLS = COUNT EXPECTED ROW COLUMN TOTAL
+  /COUNT ROUND CELL.
+
+
+==================================
+Pregunta 3 ¿Qué relación existe entre el tamaño del hogar y el nivel socioeconómico del área de residencia, y cómo varían sus efectos sobre otros indicadores de bienestar?
 ==================================
 
 RECODE numper (1 thru 2=1) (3=2) (4=3) (5=4) (6 thru hi=5) INTO tamano_cat.
@@ -98,3 +192,9 @@ T-TEST
   GROUPS = hacin_critico_dummy(0 1)
   /VARIABLES = ing_per_capita
   /CRITERIA = CI(.95).
+
+
+
+===================================
+Pregunta 4: ¿Cómo varía el acceso a servicios básicos (salud, educación, internet) según quintil de ingreso y zona de residencia, y qué diferencias existen entre grupos vulnerables (personas migrantes, indígenas, adultos mayores)?
+===================================
